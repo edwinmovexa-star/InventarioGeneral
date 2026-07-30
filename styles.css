@@ -1,0 +1,9 @@
+    *{box-sizing:border-box} body{margin:0;min-height:100vh;display:grid;place-items:center;background:#eef3f4;font-family:Arial,sans-serif;color:#17343b;padding:20px}
+    .card{width:min(430px,100%);background:#fff;border-radius:22px;padding:34px;box-shadow:0 18px 50px rgba(17,53,62,.13)}
+    .marca{font-size:30px;font-weight:800;letter-spacing:2px;color:#174f5b}.tag{margin:6px 0 28px;color:#63777c}
+    label{display:block;font-weight:700;margin:15px 0 7px}input{width:100%;padding:13px 14px;border:1px solid #cfdadd;border-radius:10px;font-size:16px;outline:none}input:focus{border-color:#1c7181;box-shadow:0 0 0 3px rgba(28,113,129,.12)}
+    button{width:100%;margin-top:22px;padding:14px;border:0;border-radius:10px;background:#174f5b;color:#fff;font-size:16px;font-weight:700;cursor:pointer}button:disabled{opacity:.6;cursor:wait}
+    .msg{min-height:22px;margin-top:15px;font-size:14px;color:#b42318}.nota{margin-top:22px;padding-top:18px;border-top:1px solid #e7edef;font-size:13px;color:#6b7c80;line-height:1.45}
+
+
+

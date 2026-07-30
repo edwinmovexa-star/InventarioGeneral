@@ -1,383 +1,64 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0"
-  />
-
-  <title>Inventario</title>
-
-  <style>
-    * {
-      box-sizing: border-box;
-    }
-
-    body {
-      font-family: Arial, sans-serif;
-      padding: 20px;
-      margin: 0;
-      background: #f4f6f8;
-    }
-
-    h1 {
-      margin-bottom: 20px;
-    }
-
-    .buscador-contenedor {
-      position: sticky;
-      top: 0;
-      z-index: 20;
-      padding: 10px 0;
-      background: #f4f6f8;
-    }
-
-    #buscador {
-      width: 100%;
-      padding: 12px;
-      margin-bottom: 10px;
-      font-size: 16px;
-      border: 1px solid #ccc;
-      border-radius: 8px;
-      outline: none;
-    }
-
-    #buscador:focus {
-      border-color: #1565c0;
-    }
-
-    #contador {
-      margin-bottom: 15px;
-      font-size: 14px;
-      color: #555;
-    }
-
-    .tabla-contenedor {
-      width: 100%;
-      overflow-x: auto;
-      background: transparent;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      background: transparent;
-    }
-
-    th,
-    td {
-      padding: 10px;
-      border: 1px solid #ddd;
-      font-size: 14px;
-      text-align: left;
-      border: none;
-      border-bottom: 1px solid #666;
-    background: transparent;
-    }
-
-    th {
-      position: sticky;
-      z-index: 10;
-      color: white;
-      border-radius: 10px;
-      background: #d89bd8;
-      border:none;
-    }
-
-    tbody tr:hover {
-      background: #f5f5f5;
-    }
-
-    td:last-child {
-      font-weight: bold;
-      color: #1565c0;
-    }
-
-    #cargando,
-    #finResultados,
-    #sinResultados {
-      padding: 20px;
-      text-align: center;
-      color: #666;
-    }
-
-    #cargando,
-    #finResultados,
-    #sinResultados {
-      display: none;
-    }
-
-    #observador {
-      width: 100%;
-      height: 20px;
-    }
-
-    @media (max-width: 700px) {
-      body {
-        padding: 10px;
-      }
-
-      th,
-      td {
-        padding: 8px;
-        font-size: 12px;
-      }
-
-      /* th {
-        top: 91px;
-      } */
-    }
-  </style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Acceso | Inventario Noventia</title>
+  <link rel="stylesheet" href="/styles.css" >
 </head>
-
 <body>
-
-  <h1>Inventario</h1>
-
-  <div class="buscador-contenedor">
-    <input
-      type="text"
-      id="buscador"
-      placeholder="Buscar por clave, descripción o ubicación..."
-      autocomplete="off"
-    />
-
-    <div id="contador">
-      Cargando inventario...
+  <main class="card">
+    <div style="text-align: center;">
+      <img src="logo.JPG" alt="Logo" style="width: 200px; height:auto; max-width:100%;">
     </div>
-  </div>
+    <!-- <div class="marca">NOVENTIA</div> -->
+    <p class="tag">Sistema interno de inventario</p>
+    <form id="loginForm">
+      <label for="correo">Correo</label>
+      <input id="correo" type="email" autocomplete="username" required>
+      <label for="contrasena">Contraseña</label>
+      <input id="contrasena" type="password" autocomplete="current-password" required>
+      <button id="entrar" type="submit">Iniciar sesión</button>
+      <div id="mensaje" class="msg" aria-live="polite"></div>
+    </form>
+    <div class="nota">El administrador entra al actualizador. El usuario general entra únicamente a la consulta.</div>
+  </main>
+  <script type="module">
+    import { signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
+    import { doc, getDoc } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
+    import { auth, db } from "./js/firebase.js";
 
-  <div class="tabla-contenedor">
-    <table>
-      <thead>
-        <tr>
-          <th>Clave</th>
-          <th>Descripción</th>
-          <th>Categoría</th>
-        </tr>
-      </thead>
+    const form = document.getElementById("loginForm");
+    const btn = document.getElementById("entrar");
+    const mensaje = document.getElementById("mensaje");
 
-      <tbody id="tabla"></tbody>
-    </table>
-
-    <div id="cargando">
-      Cargando más productos...
-    </div>
-
-    <div id="sinResultados">
-      No se encontraron productos.
-    </div>
-
-    <div id="finResultados">
-      Ya se mostraron todos los productos.
-    </div>
-
-    <div id="observador"></div>
-  </div>
-
-  <script>
-    let inventario = [];
-    let resultados = [];
-
-    const cantidadPorCarga = 100;
-
-    let cantidadMostrada = 0;
-    let cargando = false;
-    let temporizadorBusqueda;
-
-    const tabla = document.getElementById("tabla");
-    const buscador = document.getElementById("buscador");
-    const contador = document.getElementById("contador");
-    const mensajeCargando = document.getElementById("cargando");
-    const mensajeFin = document.getElementById("finResultados");
-    const mensajeSinResultados =
-      document.getElementById("sinResultados");
-    const elementoObservador =
-      document.getElementById("observador");
-
-    fetch("./inventario.json")
-      .then(response => {
-        if (!response.ok) {
-          throw new Error(
-            `Error ${response.status}: no se pudo cargar inventario.json`
-          );
-        }
-
-        return response.json();
-      })
-      .then(data => {
-        if (!Array.isArray(data)) {
-          throw new Error(
-            "El contenido de inventario.json no es un arreglo."
-          );
-        }
-
-        inventario = data;
-        resultados = inventario;
-
-        reiniciarTabla();
-      })
-      .catch(error => {
-        console.error("Error al cargar el JSON:", error);
-
-        contador.textContent =
-          "No se pudo cargar el inventario.";
-
-        mensajeSinResultados.textContent =
-          "Verifica que inventario.json esté en la misma carpeta y abre el proyecto con Live Server.";
-
-        mensajeSinResultados.style.display = "block";
-      });
-
-    function reiniciarTabla() {
-      tabla.innerHTML = "";
-      cantidadMostrada = 0;
-
-      mensajeFin.style.display = "none";
-      mensajeCargando.style.display = "none";
-      mensajeSinResultados.style.display = "none";
-
-      if (resultados.length === 0) {
-        contador.textContent = "0 productos encontrados";
-        mensajeSinResultados.style.display = "block";
-        return;
-      }
-
-      cargarMasProductos();
+    async function redirigir(usuario) {
+      const snap = await getDoc(doc(db, "usuarios", usuario.uid));
+      if (!snap.exists() || snap.data().activo === false) throw new Error("Tu cuenta no tiene un perfil activo.");
+      const rol = snap.data().rol;
+      window.location.replace(rol === "admin" ? "./consulta/index.html" : "./actualizador/index.html");
     }
 
-    function cargarMasProductos() {
-      if (cargando) {
-        return;
-      }
-
-      if (cantidadMostrada >= resultados.length) {
-        mostrarFin();
-        return;
-      }
-
-      cargando = true;
-      mensajeCargando.style.display = "block";
-
-      const inicio = cantidadMostrada;
-
-      const final = Math.min(
-        inicio + cantidadPorCarga,
-        resultados.length
-      );
-
-      const fragmento = document.createDocumentFragment();
-
-      for (let indice = inicio; indice < final; indice++) {
-        const producto = resultados[indice];
-        console.log(producto);
-        
-
-        const fila = document.createElement("tr");
-
-        const celdaClave = document.createElement("td");
-        celdaClave.textContent = producto.Clave || "";
-
-        const celdaDescripcion = document.createElement("td");
-        celdaDescripcion.textContent =
-          producto.Descripción || "";
-
-        const celdaCategoria = document.createElement("td");
-        celdaCategoria.textContent =
-          producto.Categoría || "";
-  
-
-        fila.appendChild(celdaClave);
-        fila.appendChild(celdaDescripcion);
-        fila.appendChild(celdaCategoria);
-
-        fragmento.appendChild(fila);
-      }
-
-      tabla.appendChild(fragmento);
-
-      cantidadMostrada = final;
-      cargando = false;
-
-      mensajeCargando.style.display = "none";
-
-      actualizarContador();
-
-      if (cantidadMostrada >= resultados.length) {
-        mostrarFin();
-      }
-    }
-
-    function actualizarContador() {
-      contador.textContent =
-        `Mostrando ${cantidadMostrada.toLocaleString("es-MX")} ` +
-        `de ${resultados.length.toLocaleString("es-MX")} productos`;
-    }
-
-    function mostrarFin() {
-      mensajeCargando.style.display = "none";
-
-      if (resultados.length > 0) {
-        mensajeFin.style.display = "block";
-      }
-    }
-
-    function normalizarTexto(valor) {
-      return String(valor || "")
-        .toLowerCase()
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "")
-        .trim();
-    }
-
-    buscador.addEventListener("input", function () {
-      clearTimeout(temporizadorBusqueda);
-
-      temporizadorBusqueda = setTimeout(() => {
-        const texto = normalizarTexto(buscador.value);
-
-        if (texto === "") {
-          resultados = inventario;
-          reiniciarTabla();
-          return;
-        }
-
-        resultados = inventario.filter(producto => {
-          const clave = normalizarTexto(producto.Clave);
-          const descripcion =
-            normalizarTexto(producto.Descripción);
-          const categoria =
-            normalizarTexto(producto.Categoría)
-
-          return (
-            clave.includes(texto) ||
-            descripcion.includes(texto) ||
-            categoria.includes(texto)
-          );
-        });
-
-        reiniciarTabla();
-      }, 250);
+    onAuthStateChanged(auth, async (usuario) => {
+      if (!usuario) return;
+      try { await redirigir(usuario); } catch (error) { mensaje.textContent = error.message; }
     });
 
-    const observer = new IntersectionObserver(
-      entradas => {
-        const entrada = entradas[0];
-
-        if (entrada.isIntersecting) {
-          cargarMasProductos();
-        }
-      },
-      {
-        root: null,
-        rootMargin: "300px",
-        threshold: 0
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault(); mensaje.textContent = ""; btn.disabled = true; btn.textContent = "Validando...";
+      try {
+        const credencial = await signInWithEmailAndPassword(auth, correo.value.trim(), contrasena.value);
+        await redirigir(credencial.user);
+      } catch (error) {
+        const mensajes = {
+          "auth/invalid-credential": "Correo o contraseña incorrectos.",
+          "auth/too-many-requests": "Demasiados intentos. Espera unos minutos.",
+          "auth/user-disabled": "Esta cuenta fue desactivada."
+        };
+        mensaje.textContent = mensajes[error.code] || error.message || "No fue posible iniciar sesión.";
+        btn.disabled = false; btn.textContent = "Iniciar sesión";
       }
-    );
-
-    observer.observe(elementoObservador);
+    });
   </script>
-
 </body>
 </html>

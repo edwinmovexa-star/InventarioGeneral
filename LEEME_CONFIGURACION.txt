@@ -1,0 +1,48 @@
+NOVENTIA INVENTARIO - LOGIN CON ADMIN Y USUARIO
+
+1. FIREBASE
+- Crea o abre tu proyecto de Firebase.
+- Registra una aplicación Web.
+- Copia la configuración en js/firebase-config.js.
+
+2. AUTHENTICATION
+- Firebase Console > Authentication > Sign-in method.
+- Activa Email/Password.
+- En Authentication > Users crea las cuentas.
+
+3. FIRESTORE
+- Crea Cloud Firestore.
+- Publica el contenido de firestore.rules.
+- Crea la colección: usuarios
+- El ID de cada documento debe ser exactamente el UID de Authentication.
+
+Documento administrador:
+  nombre: "Administrador"
+  correo: "administrador@noventia.com.mx"
+  rol: "admin"
+  activo: true
+
+Documento usuario general:
+  nombre: "Inventario"
+  correo: "inventario@noventia.com.mx"
+  rol: "usuario"
+  activo: true
+
+4. INVENTARIO
+- Copia inventario.json en la raíz, junto a index.html.
+
+5. GITHUB PAGES
+Sube toda esta estructura respetando las carpetas:
+  index.html
+  inventario.json
+  firestore.rules
+  js/
+  consulta/
+  actualizador/
+
+6. PERMISOS
+- admin: entra al actualizador y a la consulta.
+- usuario: entra únicamente a la consulta.
+
+IMPORTANTE
+El login restringe la navegación de la interfaz, pero inventario.json seguirá siendo un archivo público si se aloja en GitHub Pages. Para inventario completamente privado, la siguiente etapa es guardar los productos en Firestore y aplicar reglas de lectura autenticada.

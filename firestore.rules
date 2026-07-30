@@ -1,0 +1,25 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function firmado() {
+      return request.auth != null;
+    }
+
+    function perfil() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function esAdmin() {
+      return firmado() && perfil().activo == true && perfil().rol == "admin";
+    }
+
+    match /users/{uid} {
+      allow read: if firmado() && (request.auth.uid == uid || esAdmin());
+      allow create, update, delete: if esAdmin();
+    }
+
+    match /{documento=**} {
+      allow read, write: if false;
+    }
+  }
+}
