@@ -1,0 +1,477 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1"
+  >
+
+  <title>Consulta de inventario</title>
+
+  <style>
+    html:not(.sesion-lista) body {
+      visibility: hidden;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: #f3f6f7;
+      font-family: Arial, sans-serif;
+      color: #18353b;
+    }
+
+    .top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 15px;
+      padding: 0 5%;
+      background: #e6e6e6;
+      border-radius: 0 0 10px 10px;
+    }
+
+    .top h1 {
+      margin: 0;
+      font-size: 22px;
+    }
+
+    h1,
+    small {
+      color: #1d1d1d;
+    }
+
+    .acciones {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .acciones button,
+    .admin {
+      border: 0;
+      border-radius: 8px;
+      padding: 10px 13px;
+      cursor: pointer;
+      text-decoration: none;
+      background: #fff;
+      color: #174f5b;
+      font-weight: 700;
+    }
+
+    .admin {
+      display: none;
+    }
+
+    .admin,
+    #salir {
+      background: #174f5b;
+      color: #f5f5f5;
+      border: 1px solid #174f5b;
+      cursor: pointer;
+      font-size: 12px;
+    }
+
+    .acciones button,
+    .admin:hover,
+    #salir:hover {
+      color: #174f5b;
+      background: #f5f5f5;
+    }
+
+    #salir {
+      padding: 10px;
+      border-radius: 10px;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    .user-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .wrap {
+      width: min(1200px, 92%);
+      margin: 25px auto;
+    }
+
+    .panel {
+      background: #fff;
+      border-radius: 16px;
+      padding: 22px;
+      box-shadow: 0 5px 22px rgba(0, 0, 0, 0.06);
+    }
+
+    input {
+      width: 100%;
+      padding: 14px;
+      border: 1px solid #ccd8db;
+      border-radius: 10px;
+      font-size: 16px;
+    }
+
+    .estado {
+      color: #61767b;
+      margin: 15px 0;
+    }
+
+    .tabla {
+      overflow: auto;
+      max-height: 65vh;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 620px;
+    }
+
+    th,
+    td {
+      text-align: left;
+      padding: 12px;
+      border-bottom: 1px solid #e7edef;
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      background: #eef4f5;
+    }
+
+    .vacio {
+      text-align: center;
+      padding: 40px;
+      color: #7b8d91;
+    }
+
+    @media (max-width: 760px) {
+      .top {
+        padding: 12px 4%;
+        flex-wrap: wrap;
+      }
+
+      .top > img {
+        width: 150px !important;
+      }
+
+      .user-item {
+        order: 3;
+        width: 100%;
+      }
+
+      .user-item > img {
+        width: 42px !important;
+      }
+
+      .top h1 {
+        font-size: 17px;
+      }
+
+      .wrap {
+        width: 95%;
+        margin: 15px auto;
+      }
+
+      .panel {
+        padding: 15px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <header class="top">
+    <img
+      src="/logo2.png"
+      alt="Logo"
+      style="width: 200px; height: auto; max-width: 100%;"
+    >
+
+    <div class="user-item">
+      <img
+        src="/spiderman.jpg"
+        alt="Usuario"
+        style="width: 50px; height: auto; max-width: 100%;"
+      >
+
+      <div>
+        <h1>Consulta de inventario</h1>
+        <small id="perfil"></small>
+      </div>
+
+      <div class="acciones">
+        <a
+          id="irAdmin"
+          class="admin"
+          href="../actualizador/index.html"
+        >
+          Actualizador
+        </a>
+      </div>
+    </div>
+
+    <button id="salir" type="button">
+      Cerrar sesión
+    </button>
+  </header>
+
+  <main class="wrap">
+    <section class="panel">
+      <input
+        id="buscar"
+        placeholder="Buscar por clave, descripción o categoría"
+        autocomplete="off"
+      >
+
+      <div id="estado" class="estado">
+        Cargando inventario...
+      </div>
+
+      <div class="tabla">
+        <table>
+          <thead>
+            <tr id="encabezadosTabla">
+              <th>Clave</th>
+              <th>Descripción</th>
+              <th>Categoría</th>
+            </tr>
+          </thead>
+
+          <tbody id="resultados"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script type="module">
+    import {
+      protegerPagina,
+      cerrarSesion
+    } from "../js/session.js";
+
+    const perfilElemento = document.getElementById("perfil");
+    const irAdmin = document.getElementById("irAdmin");
+    const salir = document.getElementById("salir");
+    const buscar = document.getElementById("buscar");
+    const estado = document.getElementById("estado");
+    const resultados = document.getElementById("resultados");
+    const encabezadosTabla = document.getElementById("encabezadosTabla");
+
+    const sesion = await protegerPagina({
+      rolesPermitidos: ["admin", "usuario"]
+    });
+
+    let esAdministrador = false;
+    let datos = [];
+
+    const LIMITE = 300;
+
+    if (sesion) {
+      const nombre =
+        sesion.perfil.nombre ||
+        sesion.usuario.email ||
+        "Usuario";
+
+      const rol = sesion.perfil.rol;
+
+      perfilElemento.textContent = `${nombre} · ${rol}`;
+
+      esAdministrador = rol === "admin";
+
+      if (esAdministrador) {
+        irAdmin.style.display = "inline-block";
+
+        const encabezadoUbicacion = document.createElement("th");
+        encabezadoUbicacion.textContent = "Ubicación";
+        encabezadosTabla.appendChild(encabezadoUbicacion);
+
+        buscar.placeholder =
+          "Buscar por clave, descripción, categoría o ubicación";
+      }
+
+      salir.addEventListener("click", cerrarSesion);
+    }
+
+    function obtenerValor(objeto, ...nombres) {
+      for (const nombre of nombres) {
+        if (objeto[nombre] !== undefined) {
+          return String(objeto[nombre] ?? "");
+        }
+      }
+
+      return "";
+    }
+
+    function obtenerClave(producto) {
+      return obtenerValor(
+        producto,
+        "Clave",
+        "clave"
+      );
+    }
+
+    function obtenerDescripcion(producto) {
+      return obtenerValor(
+        producto,
+        "Descripción",
+        "Descripcion",
+        "descripcion"
+      );
+    }
+
+    function obtenerCategoria(producto) {
+      return obtenerValor(
+        producto,
+        "Categoría",
+        "Categoria",
+        "categoria"
+      );
+    }
+
+    function obtenerUbicacion(producto) {
+      return obtenerValor(
+        producto,
+        "Ubicación",
+        "Ubicacion",
+        "ubicacion"
+      );
+    }
+
+    function crearCelda(valor) {
+      const td = document.createElement("td");
+      td.textContent = valor;
+      return td;
+    }
+
+    function pintar(lista) {
+      resultados.innerHTML = "";
+
+      const fragmento = document.createDocumentFragment();
+
+      lista.slice(0, LIMITE).forEach((producto) => {
+        const fila = document.createElement("tr");
+
+        fila.appendChild(
+          crearCelda(obtenerClave(producto))
+        );
+
+        fila.appendChild(
+          crearCelda(obtenerDescripcion(producto))
+        );
+
+        fila.appendChild(
+          crearCelda(obtenerCategoria(producto))
+        );
+
+        if (esAdministrador) {
+          fila.appendChild(
+            crearCelda(obtenerUbicacion(producto))
+          );
+        }
+
+        fragmento.appendChild(fila);
+      });
+
+      resultados.appendChild(fragmento);
+
+      estado.textContent =
+        `${lista.length.toLocaleString("es-MX")} coincidencias` +
+        (
+          lista.length > LIMITE
+            ? ` · mostrando las primeras ${LIMITE}`
+            : ""
+        );
+    }
+
+    function productoCoincide(producto, consulta) {
+      const camposPermitidos = [
+        obtenerClave(producto),
+        obtenerDescripcion(producto),
+        obtenerCategoria(producto)
+      ];
+
+      if (esAdministrador) {
+        camposPermitidos.push(
+          obtenerUbicacion(producto)
+        );
+      }
+
+      return camposPermitidos.some((valor) =>
+        valor
+          .toLocaleLowerCase("es")
+          .includes(consulta)
+      );
+    }
+
+    try {
+      const respuesta = await fetch(
+        "../inventario.json",
+        {
+          cache: "no-store"
+        }
+      );
+
+      if (!respuesta.ok) {
+        throw new Error(
+          "No se encontró inventario.json"
+        );
+      }
+
+      datos = await respuesta.json();
+
+      if (!Array.isArray(datos)) {
+        throw new Error(
+          "El archivo inventario.json no tiene un formato válido."
+        );
+      }
+
+      pintar(datos);
+    } catch (error) {
+      estado.textContent =
+        error.message ||
+        "No se pudo cargar el inventario.";
+
+      const cantidadColumnas =
+        esAdministrador ? 4 : 3;
+
+      resultados.innerHTML = `
+        <tr>
+          <td
+            colspan="${cantidadColumnas}"
+            class="vacio"
+          >
+            Coloca inventario.json en la raíz del proyecto.
+          </td>
+        </tr>
+      `;
+    }
+
+    buscar.addEventListener("input", () => {
+      const consulta = buscar.value
+        .trim()
+        .toLocaleLowerCase("es");
+
+      if (!consulta) {
+        pintar(datos);
+        return;
+      }
+
+      const filtrados = datos.filter(
+        (producto) =>
+          productoCoincide(producto, consulta)
+      );
+
+      pintar(filtrados);
+    });
+  </script>
+</body>
+</html>
