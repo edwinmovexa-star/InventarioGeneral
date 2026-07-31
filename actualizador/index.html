@@ -1,153 +1,160 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Actualizador de Inventario V6</title>
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <style>
-    html:not(.sesion-lista) body { visibility: hidden; }
-    .barra-sesion{max-width:1100px;margin:0 auto 16px;display:flex;justify-content:space-between;align-items:center;gap:12px;background:#174f5b;color:#fff;padding:12px 16px;border-radius:12px}
-    .barra-sesion .links{display:flex;gap:8px;align-items:center}
-    .barra-sesion a,.barra-sesion button{margin:0;background:#fff;color:#174f5b;padding:9px 12px;text-decoration:none;font-weight:700;border-radius:8px;border:0;cursor:pointer}
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Actualizador de Inventario V7</title>
 
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      padding: 20px;
-      font-family: Arial, sans-serif;
-      background: #f4f6f8;
-      color: #222;
+  <!-- Librerías para leer ZIP y Excel -->
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <style>
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      padding:22px;
+      background:#f3f6f7;
+      color:#18353b;
+      font-family:Arial,sans-serif
     }
-    .contenedor { max-width: 1100px; margin: auto; }
-    .panel {
-      background: #fff;
-      border-radius: 14px;
-      padding: 22px;
-      margin-bottom: 18px;
-      box-shadow: 0 4px 18px rgba(0,0,0,.06);
+    .contenedor{width:min(1150px,96%);margin:auto}
+    .panel{
+      margin-bottom:20px;
+      padding:24px;
+      background:#fff;
+      border-radius:16px;
+      box-shadow:0 5px 22px rgba(0,0,0,.07)
     }
-    h1, h2 { margin-top: 0; }
-    .subtitulo { color: #666; }
-    .zona {
-      border: 2px dashed #999;
-      border-radius: 12px;
-      padding: 26px;
-      text-align: center;
-      background: #fafafa;
+    h1,h2{margin-top:0}
+    .subtitulo{color:#61767b;line-height:1.5}
+    .zona{
+      padding:30px;
+      border:2px dashed #8fa6ab;
+      border-radius:14px;
+      background:#f9fbfb;
+      text-align:center
     }
-    input[type="file"] { width: 100%; margin-top: 12px; }
-    button {
-      border: 0;
-      border-radius: 8px;
-      padding: 12px 18px;
-      margin: 8px 8px 0 0;
-      cursor: pointer;
-      font-size: 15px;
+    .zona.arrastrando{
+      border-color:#174f5b;
+      background:#eef6f7
     }
-    .primario { background: #1f6feb; color: white; }
-    .secundario { background: #e9ecef; color: #222; }
-    button:disabled { opacity: .5; cursor: not-allowed; }
-    progress { width: 100%; height: 18px; margin-top: 16px; }
-    .estado {
-      margin-top: 12px;
-      white-space: pre-line;
-      color: #555;
-      font-size: 14px;
+    input[type=file]{width:100%;margin-top:16px}
+    .botones{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}
+    button{
+      padding:12px 16px;
+      border:0;
+      border-radius:9px;
+      cursor:pointer;
+      font-weight:700
     }
-    .metricas {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(160px,1fr));
-      gap: 12px;
-      margin-top: 18px;
+    button:disabled{opacity:.45;cursor:not-allowed}
+    .primario{background:#174f5b;color:#fff}
+    .secundario{background:#e8edef;color:#18353b}
+    progress{width:100%;height:20px;margin-top:18px}
+    .estado{
+      min-height:58px;
+      margin-top:12px;
+      color:#536b70;
+      white-space:pre-line;
+      line-height:1.45
     }
-    .metrica {
-      border: 1px solid #e3e6ea;
-      border-radius: 10px;
-      background: #f8f9fa;
-      padding: 14px;
+    .metricas{
+      display:grid;
+      grid-template-columns:repeat(auto-fit,minmax(165px,1fr));
+      gap:12px;
+      margin-top:18px
     }
-    .metrica strong {
-      display: block;
-      font-size: 24px;
-      margin-top: 5px;
+    .metrica{
+      padding:15px;
+      border:1px solid #dde6e8;
+      border-radius:12px;
+      background:#f8fafb
     }
-    .errores {
-      display: none;
-      max-height: 280px;
-      overflow: auto;
-      border: 1px solid #efb8b8;
-      background: #fff6f6;
-      border-radius: 8px;
-      padding: 12px;
-      margin-top: 15px;
-      font-size: 14px;
+    .metrica span{display:block;color:#62777c;font-size:13px}
+    .metrica strong{display:block;margin-top:5px;font-size:24px}
+    .tabla{max-height:420px;overflow:auto;margin-top:18px}
+    table{width:100%;border-collapse:collapse;min-width:950px}
+    th,td{
+      padding:10px;
+      border-bottom:1px solid #e4ebed;
+      text-align:left;
+      font-size:13px
     }
-    .tabla-contenedor {
-      overflow-x: auto;
+    th{position:sticky;top:0;background:#edf3f4}
+    .errores{
+      display:none;
+      max-height:270px;
+      overflow:auto;
+      margin-top:16px;
+      padding:14px;
+      border:1px solid #efbaba;
+      border-radius:10px;
+      background:#fff6f6;
+      line-height:1.45
     }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 18px;
-    }
-    th, td {
-      border: 1px solid #ddd;
-      padding: 9px;
-      text-align: left;
-      font-size: 13px;
-    }
-    th { background: #222; color: #fff; }
-    .nota { color: #666; font-size: 13px; }
+    .nota{font-size:13px;color:#687d82}
   </style>
 </head>
+
 <body>
-  <div class="barra-sesion"><span id="sesionActual">Validando acceso...</span><div class="links"><a href="../consulta/index.html">Consulta</a><button id="cerrarSesion" type="button">Cerrar sesión</button></div></div>
 <div class="contenedor">
   <section class="panel">
-    <h1>Actualizador de inventario V6</h1>
+    <h1>Actualizador de inventario V7</h1>
+
     <p class="subtitulo">
-      El resultado tendrá únicamente: Clave, Descripción, Categoría y Ubicación. La ubicación se toma del nombre de la hoja. Cuando una hoja no tenga Categoría, se obtiene automáticamente del nombre del archivo.
+      Selecciona un archivo ZIP que contenga los libros Excel por categoría.
+      El nombre de cada Excel se utilizará como categoría y el nombre de cada
+      hoja como departamento.
     </p>
 
-    <div class="zona">
-      <strong>Seleccionar archivos Excel</strong>
-      <input id="archivos" type="file" accept=".xlsx,.xls" multiple />
-      <p class="nota">Puedes seleccionar todos los archivos Excel en una sola operación.</p>
+    <div id="zonaCarga" class="zona">
+      <strong>Selecciona o arrastra inventario.zip</strong>
+      <input id="archivoZip" type="file" accept=".zip,application/zip">
+      <p class="nota">
+        Las filas con Código de caja vacío se conservarán. Los duplicados no se eliminan.
+      </p>
     </div>
 
-    <button id="procesar" class="primario" disabled>Procesar inventario</button>
-    <button id="limpiar" class="secundario">Limpiar</button>
+    <div class="botones">
+      <button id="procesar" class="primario" disabled>Procesar ZIP</button>
+      <button id="limpiar" class="secundario">Limpiar</button>
+    </div>
 
     <progress id="progreso" value="0" max="100"></progress>
-    <div id="estado" class="estado">Esperando archivos...</div>
+    <div id="estado" class="estado">Esperando archivo ZIP...</div>
 
     <div class="metricas">
-      <div class="metrica">Archivos<strong id="mArchivos">0</strong></div>
-      <div class="metrica">Hojas correctas<strong id="mHojas">0</strong></div>
-      <div class="metrica">Registros generados<strong id="mRegistros">0</strong></div>
-      <div class="metrica">Errores<strong id="mErrores">0</strong></div>
-      <div class="metrica">Tiempo<strong id="mTiempo">0 s</strong></div>
+      <div class="metrica"><span>Libros Excel</span><strong id="mLibros">0</strong></div>
+      <div class="metrica"><span>Hojas procesadas</span><strong id="mHojas">0</strong></div>
+      <div class="metrica"><span>Registros</span><strong id="mRegistros">0</strong></div>
+      <div class="metrica"><span>Cajas vacías</span><strong id="mCajasVacias">0</strong></div>
+      <div class="metrica"><span>Errores</span><strong id="mErrores">0</strong></div>
+      <div class="metrica"><span>Tiempo</span><strong id="mTiempo">0 s</strong></div>
     </div>
   </section>
 
   <section class="panel">
     <h2>Resultados</h2>
 
-    <button id="descargarExcel" class="primario" disabled>Descargar Excel consolidado</button>
-    <button id="descargarJson" class="primario" disabled>Descargar inventario.json</button>
-    <button id="descargarErrores" class="secundario" disabled>Descargar reporte de errores</button>
-    <button id="descargarCambios" class="secundario" disabled>Descargar registro de actualización</button>
+    <div class="botones">
+      <button id="descargarJson" class="primario" disabled>Descargar inventario.json</button>
+      <button id="descargarExcel" class="primario" disabled>Descargar Excel consolidado</button>
+      <button id="descargarErrores" class="secundario" disabled>Descargar reporte</button>
+      <button id="descargarRegistro" class="secundario" disabled>Descargar registro</button>
+    </div>
 
     <div id="errores" class="errores"></div>
 
-    <div class="tabla-contenedor">
+    <div class="tabla">
       <table>
         <thead>
           <tr>
+            <th>Código de caja</th>
             <th>Clave</th>
             <th>Descripción</th>
             <th>Categoría</th>
+            <th>Departamento</th>
             <th>Ubicación</th>
           </tr>
         </thead>
@@ -158,413 +165,436 @@
 </div>
 
 <script>
-  const archivosInput = document.getElementById("archivos");
-  const procesarBtn = document.getElementById("procesar");
-  const limpiarBtn = document.getElementById("limpiar");
+  const archivoZip = document.getElementById("archivoZip");
+  const zonaCarga = document.getElementById("zonaCarga");
+  const procesar = document.getElementById("procesar");
+  const limpiar = document.getElementById("limpiar");
   const progreso = document.getElementById("progreso");
   const estado = document.getElementById("estado");
   const vistaPrevia = document.getElementById("vistaPrevia");
   const erroresDiv = document.getElementById("errores");
 
-  const descargarExcelBtn = document.getElementById("descargarExcel");
-  const descargarJsonBtn = document.getElementById("descargarJson");
-  const descargarErroresBtn = document.getElementById("descargarErrores");
+  const descargarJson = document.getElementById("descargarJson");
+  const descargarExcel = document.getElementById("descargarExcel");
+  const descargarErrores = document.getElementById("descargarErrores");
+  const descargarRegistro = document.getElementById("descargarRegistro");
 
-  const mArchivos = document.getElementById("mArchivos");
+  const mLibros = document.getElementById("mLibros");
   const mHojas = document.getElementById("mHojas");
   const mRegistros = document.getElementById("mRegistros");
+  const mCajasVacias = document.getElementById("mCajasVacias");
   const mErrores = document.getElementById("mErrores");
   const mTiempo = document.getElementById("mTiempo");
-  const descargarCambiosBtn = document.getElementById("descargarCambios");
 
-  let registrosFinales = [];
-  let erroresFinales = [];
-  let resumenProceso = {};
-  let inicioProceso = 0;
-  let finProceso = 0;
+  let archivoSeleccionado = null;
+  let registros = [];
+  let errores = [];
   let hojasVacias = [];
   let archivosDanados = [];
+  let estadisticas = {};
+  let inicio = 0;
 
-  archivosInput.addEventListener("change", () => {
-    const cantidad = archivosInput.files.length;
-    mArchivos.textContent = cantidad;
-    procesarBtn.disabled = cantidad === 0;
-    estado.textContent = cantidad
-      ? `${cantidad} archivo(s) listos para procesar.`
-      : "Esperando archivos...";
+  archivoZip.addEventListener("change", () => {
+    seleccionarArchivo(archivoZip.files[0] || null);
   });
 
-  limpiarBtn.addEventListener("click", limpiarTodo);
-  procesarBtn.addEventListener("click", procesarArchivos);
+  ["dragenter", "dragover"].forEach(evento => {
+    zonaCarga.addEventListener(evento, e => {
+      e.preventDefault();
+      zonaCarga.classList.add("arrastrando");
+    });
+  });
+
+  ["dragleave", "drop"].forEach(evento => {
+    zonaCarga.addEventListener(evento, e => {
+      e.preventDefault();
+      zonaCarga.classList.remove("arrastrando");
+    });
+  });
+
+  zonaCarga.addEventListener("drop", e => {
+    const archivo = Array.from(e.dataTransfer.files)
+      .find(item => item.name.toLowerCase().endsWith(".zip"));
+
+    if (!archivo) {
+      estado.textContent = "El archivo seleccionado no es un ZIP.";
+      return;
+    }
+
+    seleccionarArchivo(archivo);
+  });
+
+  procesar.addEventListener("click", procesarZip);
+  limpiar.addEventListener("click", limpiarTodo);
+
+  function seleccionarArchivo(archivo) {
+    archivoSeleccionado = archivo;
+    procesar.disabled = !archivo;
+
+    if (archivo) {
+      estado.textContent =
+        `Archivo seleccionado: ${archivo.name}\n` +
+        `Tamaño: ${formatearBytes(archivo.size)}`;
+    } else {
+      estado.textContent = "Esperando archivo ZIP...";
+    }
+  }
 
   function limpiarTodo() {
-    archivosInput.value = "";
-    registrosFinales = [];
-    erroresFinales = [];
+    archivoSeleccionado = null;
+    archivoZip.value = "";
+    registros = [];
+    errores = [];
     hojasVacias = [];
     archivosDanados = [];
-    inicioProceso = performance.now();
-    finProceso = 0;
-    resumenProceso = {};
-    hojasVacias = [];
-    archivosDanados = [];
-    inicioProceso = 0;
-    finProceso = 0;
+    estadisticas = {};
 
     progreso.value = 0;
-    estado.textContent = "Esperando archivos...";
+    estado.textContent = "Esperando archivo ZIP...";
     vistaPrevia.innerHTML = "";
     erroresDiv.innerHTML = "";
     erroresDiv.style.display = "none";
 
-    [mArchivos, mHojas, mRegistros, mErrores].forEach(el => el.textContent = "0");
+    [mLibros, mHojas, mRegistros, mCajasVacias, mErrores]
+      .forEach(elemento => elemento.textContent = "0");
+
     mTiempo.textContent = "0 s";
-    procesarBtn.disabled = true;
-    descargarExcelBtn.disabled = true;
-    descargarJsonBtn.disabled = true;
-    descargarErroresBtn.disabled = true;
-    descargarCambiosBtn.disabled = true;
+
+    procesar.disabled = true;
+    descargarJson.disabled = true;
+    descargarExcel.disabled = true;
+    descargarErrores.disabled = true;
+    descargarRegistro.disabled = true;
   }
 
-  async function procesarArchivos() {
-    const archivos = Array.from(archivosInput.files);
-    if (!archivos.length) return;
+  async function procesarZip() {
+    if (!archivoSeleccionado) return;
 
-    registrosFinales = [];
-    erroresFinales = [];
+    if (typeof JSZip === "undefined" || typeof XLSX === "undefined") {
+      estado.textContent =
+        "No se cargaron las librerías JSZip o XLSX. Verifica tu conexión a internet.";
+      return;
+    }
+
+    registros = [];
+    errores = [];
     hojasVacias = [];
     archivosDanados = [];
-    inicioProceso = performance.now();
-    finProceso = 0;
-    resumenProceso = {
-      archivos: archivos.length,
-      hojasCorrectas: 0,
-      hojasOmitidas: 0,
-      filasOrigen: 0,
-      filasAdicionales: 0
+    inicio = performance.now();
+
+    procesar.disabled = true;
+    descargarJson.disabled = true;
+    descargarExcel.disabled = true;
+    descargarErrores.disabled = true;
+    descargarRegistro.disabled = true;
+
+    erroresDiv.innerHTML = "";
+    erroresDiv.style.display = "none";
+    vistaPrevia.innerHTML = "";
+    progreso.value = 0;
+
+    estadisticas = {
+      libros: 0,
+      hojas: 0,
+      registros: 0,
+      cajasVacias: 0,
+      filasOmitidas: 0
     };
 
-    procesarBtn.disabled = true;
-    descargarExcelBtn.disabled = true;
-    descargarJsonBtn.disabled = true;
-    descargarErroresBtn.disabled = true;
-    descargarCambiosBtn.disabled = true;
-    vistaPrevia.innerHTML = "";
-    erroresDiv.innerHTML = "";
-    erroresDiv.style.display = "none";
+    try {
+      estado.textContent = "Abriendo y descomprimiendo el ZIP...";
 
-    progreso.max = 100;
-    progreso.value = 0;
+      const zip = await JSZip.loadAsync(archivoSeleccionado);
 
-    let totalHojasEstimadas = 0;
-    let hojasProcesadasGlobal = 0;
+      const archivosExcel = Object.values(zip.files)
+        .filter(entrada =>
+          !entrada.dir &&
+          !entrada.name.startsWith("__MACOSX/") &&
+          /\.(xlsx|xls)$/i.test(entrada.name) &&
+          !nombreBase(entrada.name).startsWith("~$")
+        )
+        .sort((a, b) => a.name.localeCompare(b.name, "es"));
 
-    for (let i = 0; i < archivos.length; i++) {
-      const archivo = archivos[i];
+      estadisticas.libros = archivosExcel.length;
+      mLibros.textContent = estadisticas.libros.toLocaleString("es-MX");
+
+      if (!archivosExcel.length) {
+        throw new Error("El ZIP no contiene archivos Excel.");
+      }
+
+      let totalHojasConocidas = 0;
+      let hojasTerminadas = 0;
+
+      for (let indiceLibro = 0; indiceLibro < archivosExcel.length; indiceLibro++) {
+        const entrada = archivosExcel[indiceLibro];
+        const nombreArchivo = nombreBase(entrada.name);
+        const categoria = categoriaDesdeArchivo(nombreArchivo);
+
+        estado.textContent =
+          `Leyendo libro ${indiceLibro + 1} de ${archivosExcel.length}\n` +
+          `${nombreArchivo}`;
+
+        try {
+          const buffer = await entrada.async("arraybuffer");
+          const workbook = XLSX.read(buffer, {
+            type: "array",
+            raw: false,
+            cellDates: false
+          });
+
+          totalHojasConocidas += workbook.SheetNames.length;
+
+          for (const nombreHoja of workbook.SheetNames) {
+            const departamento = String(nombreHoja || "").trim();
+
+            estado.textContent =
+              `Libro ${indiceLibro + 1} de ${archivosExcel.length}: ${nombreArchivo}\n` +
+              `Hoja: ${departamento}\n` +
+              `Registros generados: ${registros.length.toLocaleString("es-MX")}`;
+
+            try {
+              const hoja = workbook.Sheets[nombreHoja];
+              const filas = XLSX.utils.sheet_to_json(hoja, {
+                header: 1,
+                defval: "",
+                raw: false,
+                blankrows: false
+              });
+
+              if (esHojaVacia(filas)) {
+                hojasVacias.push({
+                  Archivo: nombreArchivo,
+                  Hoja: departamento,
+                  Motivo: "Hoja vacía"
+                });
+
+                hojasTerminadas++;
+                actualizarProgreso(hojasTerminadas, totalHojasConocidas);
+                continue;
+              }
+
+              const encabezado = encontrarEncabezado(filas);
+
+              if (!encabezado) {
+                errores.push({
+                  Archivo: nombreArchivo,
+                  Hoja: departamento,
+                  Motivo:
+                    "No se encontraron Código de producto y Descripción"
+                });
+
+                hojasTerminadas++;
+                actualizarProgreso(hojasTerminadas, totalHojasConocidas);
+                continue;
+              }
+
+              const resultado = procesarHoja(
+                filas,
+                encabezado,
+                categoria,
+                departamento
+              );
+
+              for (const registro of resultado.registros) {
+                registros.push(registro);
+              }
+
+              estadisticas.hojas++;
+              estadisticas.registros += resultado.registros.length;
+              estadisticas.cajasVacias += resultado.cajasVacias;
+              estadisticas.filasOmitidas += resultado.filasOmitidas;
+
+              hojasTerminadas++;
+              actualizarMetricas();
+              actualizarProgreso(hojasTerminadas, totalHojasConocidas);
+
+              await pausaInterfaz();
+            } catch (errorHoja) {
+              errores.push({
+                Archivo: nombreArchivo,
+                Hoja: departamento,
+                Motivo: errorHoja.message || "Error al procesar la hoja"
+              });
+
+              hojasTerminadas++;
+              actualizarProgreso(hojasTerminadas, totalHojasConocidas);
+            }
+          }
+        } catch (errorLibro) {
+          const detalle = {
+            Archivo: nombreArchivo,
+            Hoja: "",
+            Motivo: errorLibro.message || "Archivo Excel dañado"
+          };
+
+          archivosDanados.push(detalle);
+          errores.push(detalle);
+        }
+
+        await pausaInterfaz();
+      }
+
+      progreso.value = 100;
+
+      const tiempo = (performance.now() - inicio) / 1000;
+      mTiempo.textContent = formatearTiempo(tiempo);
 
       estado.textContent =
-        `Procesando ${i + 1} de ${archivos.length}\n${archivo.name}`;
+        `Proceso terminado.\n` +
+        `${estadisticas.libros.toLocaleString("es-MX")} libros encontrados.\n` +
+        `${estadisticas.hojas.toLocaleString("es-MX")} hojas procesadas.\n` +
+        `${registros.length.toLocaleString("es-MX")} registros generados.`;
 
-      try {
-        const buffer = await archivo.arrayBuffer();
-        const workbook = XLSX.read(buffer, {
-          type: "array",
-          raw: false,
-          cellDates: false
-        });
-
-        totalHojasEstimadas += workbook.SheetNames.length;
-
-        for (const nombreHoja of workbook.SheetNames) {
-          estado.textContent =
-            `Archivo ${i + 1} de ${archivos.length}: ${archivo.name}\n` +
-            `Hoja: ${nombreHoja}\n` +
-            `Registros generados: ${registrosFinales.length.toLocaleString("es-MX")}`;
-          if (debeOmitirHoja(nombreHoja)) {
-            resumenProceso.hojasOmitidas++;
-            hojasProcesadasGlobal++;
-            actualizarProgresoReal(hojasProcesadasGlobal, totalHojasEstimadas);
-            continue;
-          }
-
-          try {
-            const hoja = workbook.Sheets[nombreHoja];
-            const filas = XLSX.utils.sheet_to_json(hoja, {
-              header: 1,
-              defval: "",
-              raw: false,
-              blankrows: false
-            });
-
-            if (!filas.length || filas.every(fila => !fila.some(valor => String(valor ?? "").trim()))) {
-              hojasVacias.push({
-                archivo: archivo.name,
-                hoja: nombreHoja,
-                motivo: "Hoja vacía"
-              });
-              resumenProceso.hojasOmitidas++;
-              hojasProcesadasGlobal++;
-              actualizarProgresoReal(hojasProcesadasGlobal, totalHojasEstimadas);
-              continue;
-            }
-
-            const resultado = procesarHoja(filas, archivo.name, nombreHoja);
-
-            if (resultado.error) {
-              erroresFinales.push(resultado.error);
-              continue;
-            }
-
-            for (const registro of resultado.registros) {
-              registrosFinales.push(registro);
-            }
-
-            resumenProceso.hojasCorrectas++;
-            resumenProceso.filasOrigen += resultado.filasOrigen;
-            resumenProceso.filasAdicionales += resultado.filasAdicionales;
-            hojasProcesadasGlobal++;
-            actualizarProgresoReal(hojasProcesadasGlobal, totalHojasEstimadas);
-
-          } catch (errorHoja) {
-            erroresFinales.push({
-              archivo: archivo.name,
-              hoja: nombreHoja,
-              motivo: errorHoja.message || "Error al procesar la hoja"
-            });
-            hojasProcesadasGlobal++;
-            actualizarProgresoReal(hojasProcesadasGlobal, totalHojasEstimadas);
-          }
-        }
-      } catch (errorArchivo) {
-        const detalle = {
-          archivo: archivo.name,
-          hoja: "",
-          motivo: errorArchivo.message || "No fue posible leer el archivo"
-        };
-        erroresFinales.push(detalle);
-        archivosDanados.push(detalle);
-      }
-
-      actualizarProgresoReal(hojasProcesadasGlobal, totalHojasEstimadas);
+      mostrarVistaPrevia();
+      mostrarErrores();
       actualizarMetricas();
-      await new Promise(resolve => setTimeout(resolve, 20));
+
+      descargarJson.disabled = registros.length === 0;
+      descargarExcel.disabled = registros.length === 0;
+      descargarErrores.disabled =
+        errores.length === 0 && hojasVacias.length === 0;
+      descargarRegistro.disabled = false;
+    } catch (error) {
+      console.error(error);
+      estado.textContent =
+        error.message || "No fue posible procesar el archivo ZIP.";
+    } finally {
+      procesar.disabled = false;
     }
-
-    finProceso = performance.now();
-    const segundosTotales = Math.max(0, (finProceso - inicioProceso) / 1000);
-    mTiempo.textContent = formatearTiempo(segundosTotales);
-    progreso.value = 100;
-
-    estado.textContent =
-      `Proceso terminado.\n` +
-      `${registrosFinales.length.toLocaleString("es-MX")} registros generados.\n` +
-      `${erroresFinales.length.toLocaleString("es-MX")} errores detectados.`;
-
-    mostrarVistaPrevia();
-    mostrarErrores();
-
-    descargarExcelBtn.disabled = registrosFinales.length === 0;
-    descargarJsonBtn.disabled = registrosFinales.length === 0;
-    descargarErroresBtn.disabled =
-      erroresFinales.length === 0 &&
-      hojasVacias.length === 0 &&
-      archivosDanados.length === 0;
-    descargarCambiosBtn.disabled = false;
-    procesarBtn.disabled = false;
-  }
-
-  function procesarHoja(filas, archivo, nombreHoja) {
-    if (!filas || filas.length === 0) {
-      return { error: { archivo, hoja: nombreHoja, motivo: "Hoja vacía" } };
-    }
-
-    const encabezado = encontrarEncabezado(filas);
-
-    if (!encabezado) {
-      return {
-        error: {
-          archivo,
-          hoja: nombreHoja,
-          motivo: "No se encontraron columnas de Clave/Código y Descripción"
-        }
-      };
-    }
-
-    const { filaIndice, columnas } = encabezado;
-    const registros = [];
-    let filasOrigen = 0;
-    let filasAdicionales = 0;
-
-    for (let i = filaIndice + 1; i < filas.length; i++) {
-      const fila = filas[i] || [];
-
-      const clave = limpiar(fila[columnas.clave]);
-      const descripcion = limpiar(fila[columnas.descripcion]);
-      const categoriaCelda =
-        columnas.categoria !== undefined
-          ? limpiar(fila[columnas.categoria])
-          : "";
-
-      const categoria = categoriaCelda || categoriaDesdeArchivo(archivo);
-
-      if (!clave && !descripcion) continue;
-      if (!clave || !descripcion) continue;
-
-      filasOrigen++;
-
-      let cantidad = 1;
-      if (columnas.cantidad !== undefined) {
-        cantidad = parsearCantidad(fila[columnas.cantidad]);
-      }
-
-      // La ubicación se toma SIEMPRE del nombre de la hoja.
-      const ubicacion = nombreHoja;
-
-      for (let copia = 0; copia < cantidad; copia++) {
-        registros.push({
-          Clave: clave,
-          Descripción: descripcion,
-          Categoría: categoria,
-          Ubicación: ubicacion
-        });
-      }
-
-      if (cantidad > 1) {
-        filasAdicionales += cantidad - 1;
-      }
-    }
-
-    return { registros, filasOrigen, filasAdicionales };
   }
 
   function encontrarEncabezado(filas) {
-    const limite = Math.min(filas.length, 50);
+    const limite = Math.min(filas.length, 60);
 
     for (let i = 0; i < limite; i++) {
       const fila = Array.isArray(filas[i]) ? filas[i] : [];
-      const normalizados = fila.map(normalizar);
       const columnas = {};
 
-      for (let j = 0; j < normalizados.length; j++) {
-        const valor = normalizados[j];
+      fila.forEach((valor, indice) => {
+        const encabezado = normalizar(valor);
 
-        if (esClave(valor)) columnas.clave = j;
-        if (esDescripcion(valor)) columnas.descripcion = j;
-        if (esCategoria(valor)) columnas.categoria = j;
-        if (esCantidad(valor)) columnas.cantidad = j;
-      }
-
-      if (
-        columnas.clave === undefined &&
-        columnas.descripcion !== undefined &&
-        pareceColumnaClave(filas, i, 0)
-      ) {
-        columnas.clave = 0;
-      }
+        if (esCodigoCaja(encabezado)) columnas.codigoCaja = indice;
+        if (esCodigoProducto(encabezado)) columnas.codigoProducto = indice;
+        if (esDescripcion(encabezado)) columnas.descripcion = indice;
+        if (esUbicacion(encabezado)) columnas.ubicacion = indice;
+      });
 
       if (
-        columnas.clave !== undefined &&
+        columnas.codigoProducto !== undefined &&
         columnas.descripcion !== undefined
       ) {
-        return { filaIndice: i, columnas };
+        return {
+          filaIndice: i,
+          columnas
+        };
       }
     }
 
     return null;
   }
 
-  function pareceColumnaClave(filas, filaEncabezado, columna) {
-    let validos = 0;
-    let revisados = 0;
-    const limite = Math.min(filas.length, filaEncabezado + 12);
+  function procesarHoja(filas, encabezado, categoria, departamento) {
+    const registrosHoja = [];
+    let cajasVacias = 0;
+    let filasOmitidas = 0;
 
-    for (let i = filaEncabezado + 1; i < limite; i++) {
+    const { filaIndice, columnas } = encabezado;
+
+    for (let i = filaIndice + 1; i < filas.length; i++) {
       const fila = Array.isArray(filas[i]) ? filas[i] : [];
-      const valor = limpiar(fila[columna]);
 
-      if (!valor) continue;
+      const codigoCaja =
+        columnas.codigoCaja !== undefined
+          ? limpiar(fila[columnas.codigoCaja])
+          : "";
 
-      revisados++;
+      const clave = limpiar(fila[columnas.codigoProducto]);
+      const descripcion = limpiar(fila[columnas.descripcion]);
 
-      if (/^[,]?\d{6,}$/.test(valor.replace(/\s+/g, ""))) {
-        validos++;
+      const ubicacion =
+        columnas.ubicacion !== undefined
+          ? limpiar(fila[columnas.ubicacion])
+          : "";
+
+      // La fila se conserva aunque Código de caja esté vacío.
+      // Solo se omite si no hay Código de producto ni Descripción.
+      if (!clave && !descripcion) {
+        filasOmitidas++;
+        continue;
       }
+
+      if (!codigoCaja) cajasVacias++;
+
+      registrosHoja.push({
+        "Clave": clave,
+        "Descripción": descripcion,
+        "Categoría": categoria,
+        "Ubicación": ubicacion,
+
+        // Campos adicionales. No modifican la tabla actual de consulta.
+        "Código de caja": codigoCaja,
+        "Departamento": departamento
+      });
     }
 
-    return revisados > 0 && validos / revisados >= 0.6;
+    return {
+      registros: registrosHoja,
+      cajasVacias,
+      filasOmitidas
+    };
   }
 
-  function esClave(valor) {
+  function esCodigoCaja(valor) {
     return [
-      "clave",
-      "codigo",
+      "codigo caja",
+      "codigo de caja",
+      "código caja",
+      "código de caja",
+      "caja",
+      "codigo caja1",
+      "codigo de caja1"
+    ].includes(valor);
+  }
+
+  function esCodigoProducto(valor) {
+    return [
       "codigo producto",
       "codigo de producto",
+      "código producto",
+      "código de producto",
+      "clave",
       "clave producto",
       "clave de producto",
-      "id producto",
       "sku",
-      "clave1",
-      "clave 1",
-      "codigo1",
-      "codigo 1",
-      "-"
+      "codigo",
+      "código"
     ].includes(valor);
   }
 
   function esDescripcion(valor) {
     return [
       "descripcion",
+      "descripción",
       "descripcion producto",
+      "descripción producto",
       "descripcion del producto",
+      "descripción del producto",
       "nombre",
-      "nombre producto",
-      "nombre del producto",
       "producto",
-      "articulo"
+      "articulo",
+      "artículo"
     ].includes(valor);
   }
 
-  function esCategoria(valor) {
+  function esUbicacion(valor) {
     return [
-      "categoria",
-      "categoria producto",
-      "categoria del producto",
-      "subcategoria",
-      "sub categoria",
-      "clasificacion",
-      "clasificación",
-      "familia",
-      "linea",
-      "línea",
-      "tipo",
-      "grupo"
+      "ubicacion",
+      "ubicación",
+      "ubicacion producto",
+      "ubicación producto",
+      "localizacion",
+      "localización"
     ].includes(valor);
-  }
-
-  function esCantidad(valor) {
-    return [
-      "moyan",
-      "cantidad",
-      "existencia",
-      "existencias",
-      "stock",
-      "piezas",
-      "pza",
-      "pz",
-      "unidades"
-    ].includes(valor);
-  }
-
-  function debeOmitirHoja(nombreHoja) {
-    const nombre = normalizar(nombreHoja);
-    return [
-      "plantilla",
-      "resumen",
-      "hoja1",
-      "sheet1",
-      "instrucciones"
-    ].includes(nombre);
   }
 
   function normalizar(valor) {
@@ -581,73 +611,95 @@
     return String(valor ?? "").trim();
   }
 
+  function nombreBase(ruta) {
+    return String(ruta)
+      .split("/")
+      .filter(Boolean)
+      .pop() || "";
+  }
+
   function categoriaDesdeArchivo(nombreArchivo) {
-    return String(nombreArchivo || "")
+    return nombreArchivo
       .replace(/\.(xlsx|xls)$/i, "")
-      .replace(/^reporte[\s_-]*inventario[\s_-]*/i, "")
       .replace(/[._-]+/g, " ")
       .replace(/\s+/g, " ")
-      .trim()
-      .replace(/\b\w/g, letra => letra.toUpperCase());
+      .trim();
   }
 
-  function parsearCantidad(valor) {
-    const limpio = String(valor ?? "")
-      .replace(/,/g, "")
-      .match(/\d+/);
-
-    const numero = limpio ? parseInt(limpio[0], 10) : 1;
-
-    if (!Number.isFinite(numero) || numero < 1) return 1;
-    return Math.min(numero, 10000);
+  function esHojaVacia(filas) {
+    return (
+      !filas.length ||
+      filas.every(fila =>
+        !Array.isArray(fila) ||
+        fila.every(valor => limpiar(valor) === "")
+      )
+    );
   }
 
-  function actualizarProgresoReal(procesadas, total) {
-    if (!total || total < 1) return;
-    progreso.value = Math.min(99, Math.round((procesadas / total) * 100));
-  }
-
-  function formatearTiempo(segundos) {
-    if (segundos < 60) return `${segundos.toFixed(1)} s`;
-    const minutos = Math.floor(segundos / 60);
-    const resto = Math.round(segundos % 60);
-    return `${minutos} min ${resto} s`;
+  function actualizarProgreso(procesadas, total) {
+    if (!total) return;
+    progreso.value = Math.min(
+      99,
+      Math.round((procesadas / total) * 100)
+    );
   }
 
   function actualizarMetricas() {
-    mHojas.textContent = resumenProceso.hojasCorrectas.toLocaleString("es-MX");
-    mRegistros.textContent = registrosFinales.length.toLocaleString("es-MX");
+    mLibros.textContent = estadisticas.libros.toLocaleString("es-MX");
+    mHojas.textContent = estadisticas.hojas.toLocaleString("es-MX");
+    mRegistros.textContent = registros.length.toLocaleString("es-MX");
+    mCajasVacias.textContent =
+      estadisticas.cajasVacias.toLocaleString("es-MX");
     mErrores.textContent =
-      (erroresFinales.length + hojasVacias.length).toLocaleString("es-MX");
+      (errores.length + hojasVacias.length).toLocaleString("es-MX");
 
-    if (inicioProceso && !finProceso) {
-      mTiempo.textContent = formatearTiempo((performance.now() - inicioProceso) / 1000);
+    if (inicio) {
+      mTiempo.textContent =
+        formatearTiempo((performance.now() - inicio) / 1000);
     }
   }
 
   function mostrarVistaPrevia() {
     vistaPrevia.innerHTML = "";
-    const limite = Math.min(registrosFinales.length, 100);
+    const fragmento = document.createDocumentFragment();
 
-    for (let i = 0; i < limite; i++) {
-      const producto = registrosFinales[i];
+    registros.slice(0, 100).forEach(producto => {
       const fila = document.createElement("tr");
 
-      for (const campo of ["Clave", "Descripción", "Categoría", "Ubicación"]) {
+      [
+        producto["Código de caja"],
+        producto["Clave"],
+        producto["Descripción"],
+        producto["Categoría"],
+        producto["Departamento"],
+        producto["Ubicación"]
+      ].forEach(valor => {
         const celda = document.createElement("td");
-        celda.textContent = producto[campo] || "";
+        celda.textContent = valor || "";
         fila.appendChild(celda);
-      }
+      });
 
-      vistaPrevia.appendChild(fila);
-    }
+      fragmento.appendChild(fila);
+    });
+
+    vistaPrevia.appendChild(fragmento);
   }
 
   function mostrarErrores() {
     erroresDiv.innerHTML = "";
 
-    if (!erroresFinales.length) {
-      erroresDiv.innerHTML = "";
+    const lista = [
+      ...errores.map(item => ({
+        Tipo: "Error de estructura o lectura",
+        ...item
+      })),
+      ...hojasVacias.map(item => ({
+        Tipo: "Hoja vacía",
+        ...item
+      }))
+    ];
+
+    if (!lista.length) {
       erroresDiv.style.display = "none";
       return;
     }
@@ -655,122 +707,159 @@
     erroresDiv.style.display = "block";
 
     const titulo = document.createElement("strong");
-    titulo.textContent = "Hojas o archivos no reconocidos:";
+    titulo.textContent = "Hojas o archivos que requieren revisión:";
     erroresDiv.appendChild(titulo);
-    erroresDiv.appendChild(document.createElement("br"));
-    erroresDiv.appendChild(document.createElement("br"));
 
-    for (const error of erroresFinales) {
+    lista.forEach(item => {
       const linea = document.createElement("div");
       linea.textContent =
-        `${error.archivo} | ${error.hoja || "Sin hoja"} | ${error.motivo}`;
+        `${item.Tipo} | ${item.Archivo} | ` +
+        `${item.Hoja || "Sin hoja"} | ${item.Motivo}`;
       erroresDiv.appendChild(linea);
-    }
+    });
   }
 
-  descargarExcelBtn.addEventListener("click", () => {
-    const hojaInventario = XLSX.utils.json_to_sheet(registrosFinales);
-
-    hojaInventario["!cols"] = [
-      { wch: 18 },
-      { wch: 60 },
-      { wch: 35 },
-      { wch: 16 }
-    ];
-
-    const hojaResumen = XLSX.utils.aoa_to_sheet([
-      ["Concepto", "Resultado"],
-      ["Archivos procesados", resumenProceso.archivos],
-      ["Hojas reconocidas", resumenProceso.hojasCorrectas],
-      ["Hojas omitidas", resumenProceso.hojasOmitidas],
-      ["Filas de productos originales", resumenProceso.filasOrigen],
-      ["Filas adicionales por cantidades", resumenProceso.filasAdicionales],
-      ["Registros finales", registrosFinales.length],
-      ["Hojas vacías", hojasVacias.length],
-      ["Archivos dañados", archivosDanados.length],
-      ["Errores detectados", erroresFinales.length],
-      ["Duplicados", "Conservados sin modificación"],
-      ["Tiempo total", mTiempo.textContent]
-    ]);
-
-    const libro = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(libro, hojaInventario, "Inventario Consolidado");
-    XLSX.utils.book_append_sheet(libro, hojaResumen, "Resumen");
-
-    XLSX.writeFile(libro, "Inventario_Consolidado.xlsx");
-  });
-
-  descargarJsonBtn.addEventListener("click", () => {
-    descargarArchivo(
+  descargarJson.addEventListener("click", () => {
+    descargarTexto(
       "inventario.json",
-      JSON.stringify(registrosFinales, null, 2),
+      JSON.stringify(registros, null, 2),
       "application/json;charset=utf-8"
     );
   });
 
-  descargarErroresBtn.addEventListener("click", () => {
-    const reporteCompleto = [
-      ...erroresFinales.map(item => ({ Tipo: "Hoja no reconocida", ...item })),
-      ...hojasVacias.map(item => ({ Tipo: "Hoja vacía", ...item })),
-      ...archivosDanados.map(item => ({ Tipo: "Archivo dañado", ...item }))
+  descargarExcel.addEventListener("click", () => {
+    const hojaInventario = XLSX.utils.json_to_sheet(registros);
+
+    hojaInventario["!cols"] = [
+      { wch: 18 },
+      { wch: 20 },
+      { wch: 55 },
+      { wch: 28 },
+      { wch: 30 },
+      { wch: 20 }
     ];
 
-    const hoja = XLSX.utils.json_to_sheet(reporteCompleto);
+    const hojaResumen = XLSX.utils.aoa_to_sheet([
+      ["Concepto", "Resultado"],
+      ["Archivo ZIP", archivoSeleccionado?.name || ""],
+      ["Libros Excel encontrados", estadisticas.libros || 0],
+      ["Hojas procesadas", estadisticas.hojas || 0],
+      ["Registros generados", registros.length],
+      ["Códigos de caja vacíos", estadisticas.cajasVacias || 0],
+      ["Filas completamente vacías omitidas", estadisticas.filasOmitidas || 0],
+      ["Hojas vacías", hojasVacias.length],
+      ["Archivos dañados", archivosDanados.length],
+      ["Duplicados", "Conservados sin modificación"],
+      ["Tiempo", mTiempo.textContent]
+    ]);
+
+    const libro = XLSX.utils.book_new();
+
+    XLSX.utils.book_append_sheet(
+      libro,
+      hojaInventario,
+      "Inventario Consolidado"
+    );
+
+    XLSX.utils.book_append_sheet(
+      libro,
+      hojaResumen,
+      "Resumen"
+    );
+
+    XLSX.writeFile(libro, "Inventario_Consolidado.xlsx");
+  });
+
+  descargarErrores.addEventListener("click", () => {
+    const reporte = [
+      ...errores.map(item => ({
+        Tipo: "Error de estructura o lectura",
+        ...item
+      })),
+      ...hojasVacias.map(item => ({
+        Tipo: "Hoja vacía",
+        ...item
+      })),
+      ...archivosDanados.map(item => ({
+        Tipo: "Archivo dañado",
+        ...item
+      }))
+    ];
+
+    const hoja = XLSX.utils.json_to_sheet(reporte);
     hoja["!cols"] = [
+      { wch: 30 },
       { wch: 45 },
-      { wch: 20 },
+      { wch: 30 },
       { wch: 65 }
     ];
 
     const libro = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(libro, hoja, "Errores");
+    XLSX.utils.book_append_sheet(libro, hoja, "Reporte");
     XLSX.writeFile(libro, "Reporte_Errores.xlsx");
   });
 
-  descargarCambiosBtn.addEventListener("click", () => {
-    const fecha = new Date();
+  descargarRegistro.addEventListener("click", () => {
+    const ahora = new Date();
 
-    const registro = [
+    const hoja = XLSX.utils.aoa_to_sheet([
       ["Concepto", "Resultado"],
-      ["Fecha de actualización", fecha.toLocaleString("es-MX")],
-      ["Archivos seleccionados", resumenProceso.archivos || 0],
-      ["Hojas reconocidas", resumenProceso.hojasCorrectas || 0],
-      ["Hojas omitidas", resumenProceso.hojasOmitidas || 0],
+      ["Fecha de actualización", ahora.toLocaleString("es-MX")],
+      ["Archivo ZIP", archivoSeleccionado?.name || ""],
+      ["Libros Excel encontrados", estadisticas.libros || 0],
+      ["Hojas procesadas", estadisticas.hojas || 0],
+      ["Registros generados", registros.length],
+      ["Códigos de caja vacíos", estadisticas.cajasVacias || 0],
       ["Hojas vacías", hojasVacias.length],
       ["Archivos dañados", archivosDanados.length],
-      ["Registros originales", resumenProceso.filasOrigen || 0],
-      ["Filas adicionales por cantidades", resumenProceso.filasAdicionales || 0],
-      ["Registros finales", registrosFinales.length],
       ["Duplicados", "Conservados sin modificación"],
       ["Tiempo total", mTiempo.textContent]
-    ];
+    ]);
 
-    const hoja = XLSX.utils.aoa_to_sheet(registro);
-    hoja["!cols"] = [{ wch: 38 }, { wch: 30 }];
+    hoja["!cols"] = [{ wch: 38 }, { wch: 40 }];
 
     const libro = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(libro, hoja, "Registro actualización");
+    XLSX.utils.book_append_sheet(libro, hoja, "Actualización");
     XLSX.writeFile(libro, "Registro_Actualizacion.xlsx");
   });
 
-  function descargarArchivo(nombre, contenido, tipo) {
+  function descargarTexto(nombre, contenido, tipo) {
     const blob = new Blob([contenido], { type: tipo });
     const url = URL.createObjectURL(blob);
     const enlace = document.createElement("a");
+
     enlace.href = url;
     enlace.download = nombre;
     document.body.appendChild(enlace);
     enlace.click();
     enlace.remove();
+
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
-</script>
-<script type="module">
-  import { protegerPagina, cerrarSesion } from "../js/session.js";
-  const sesion = await protegerPagina({ rolesPermitidos: ["admin"] });
-  if (sesion) {
-    document.getElementById("sesionActual").textContent = `${sesion.perfil.nombre || sesion.usuario.email} · Administrador`;
-    document.getElementById("cerrarSesion").addEventListener("click", cerrarSesion);
+
+  function formatearTiempo(segundos) {
+    if (segundos < 60) return `${segundos.toFixed(1)} s`;
+
+    const minutos = Math.floor(segundos / 60);
+    const resto = Math.round(segundos % 60);
+
+    return `${minutos} min ${resto} s`;
+  }
+
+  function formatearBytes(bytes) {
+    if (!bytes) return "0 B";
+
+    const unidades = ["B", "KB", "MB", "GB"];
+    const indice = Math.min(
+      Math.floor(Math.log(bytes) / Math.log(1024)),
+      unidades.length - 1
+    );
+
+    return `${(bytes / Math.pow(1024, indice)).toFixed(2)} ${unidades[indice]}`;
+  }
+
+  function pausaInterfaz() {
+    return new Promise(resolve => setTimeout(resolve, 0));
   }
 </script>
 </body>
