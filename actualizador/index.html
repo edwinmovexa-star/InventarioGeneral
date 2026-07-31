@@ -3,9 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Actualizador de Inventario V7</title>
+  <title>Actualizador de Inventario V7 Estable</title>
 
-  <!-- Librerías para leer ZIP y Excel -->
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
@@ -103,22 +102,22 @@
     <h1>Actualizador de inventario V7</h1>
 
     <p class="subtitulo">
-      Selecciona un archivo ZIP que contenga los libros Excel por categoría.
-      El nombre de cada Excel se utilizará como categoría y el nombre de cada
-      hoja como departamento.
+      Selecciona un ZIP con los libros Excel. El nombre de cada libro se utilizará
+      como categoría y el nombre de cada hoja como departamento. La página de
+      consulta no se modifica.
     </p>
 
     <div id="zonaCarga" class="zona">
       <strong>Selecciona o arrastra inventario.zip</strong>
       <input id="archivoZip" type="file" accept=".zip,application/zip">
       <p class="nota">
-        Las filas con Código de caja vacío se conservarán. Los duplicados no se eliminan.
+        Se conservan duplicados y filas con Código de caja vacío.
       </p>
     </div>
 
     <div class="botones">
-      <button id="procesar" class="primario" disabled>Procesar ZIP</button>
-      <button id="limpiar" class="secundario">Limpiar</button>
+      <button id="btnProcesar" class="primario" disabled>Procesar ZIP</button>
+      <button id="btnLimpiar" class="secundario">Limpiar</button>
     </div>
 
     <progress id="progreso" value="0" max="100"></progress>
@@ -138,10 +137,10 @@
     <h2>Resultados</h2>
 
     <div class="botones">
-      <button id="descargarJson" class="primario" disabled>Descargar inventario.json</button>
-      <button id="descargarExcel" class="primario" disabled>Descargar Excel consolidado</button>
-      <button id="descargarErrores" class="secundario" disabled>Descargar reporte</button>
-      <button id="descargarRegistro" class="secundario" disabled>Descargar registro</button>
+      <button id="btnDescargarJson" class="primario" disabled>Descargar inventario.json</button>
+      <button id="btnDescargarExcel" class="primario" disabled>Descargar Excel consolidado</button>
+      <button id="btnDescargarErrores" class="secundario" disabled>Descargar reporte</button>
+      <button id="btnDescargarRegistro" class="secundario" disabled>Descargar registro</button>
     </div>
 
     <div id="errores" class="errores"></div>
@@ -165,19 +164,19 @@
 </div>
 
 <script>
-  const archivoZip = document.getElementById("archivoZip");
+  const archivoZipInput = document.getElementById("archivoZip");
   const zonaCarga = document.getElementById("zonaCarga");
-  const procesar = document.getElementById("procesar");
-  const limpiar = document.getElementById("limpiar");
+  const btnProcesar = document.getElementById("btnProcesar");
+  const btnLimpiar = document.getElementById("btnLimpiar");
   const progreso = document.getElementById("progreso");
   const estado = document.getElementById("estado");
   const vistaPrevia = document.getElementById("vistaPrevia");
   const erroresDiv = document.getElementById("errores");
 
-  const descargarJson = document.getElementById("descargarJson");
-  const descargarExcel = document.getElementById("descargarExcel");
-  const descargarErrores = document.getElementById("descargarErrores");
-  const descargarRegistro = document.getElementById("descargarRegistro");
+  const btnDescargarJson = document.getElementById("btnDescargarJson");
+  const btnDescargarExcel = document.getElementById("btnDescargarExcel");
+  const btnDescargarErrores = document.getElementById("btnDescargarErrores");
+  const btnDescargarRegistro = document.getElementById("btnDescargarRegistro");
 
   const mLibros = document.getElementById("mLibros");
   const mHojas = document.getElementById("mHojas");
@@ -192,10 +191,10 @@
   let hojasVacias = [];
   let archivosDanados = [];
   let estadisticas = {};
-  let inicio = 0;
+  let inicioProceso = 0;
 
-  archivoZip.addEventListener("change", () => {
-    seleccionarArchivo(archivoZip.files[0] || null);
+  archivoZipInput.addEventListener("change", () => {
+    seleccionarArchivo(archivoZipInput.files[0] || null);
   });
 
   ["dragenter", "dragover"].forEach(evento => {
@@ -224,30 +223,27 @@
     seleccionarArchivo(archivo);
   });
 
-  procesar.addEventListener("click", procesarZip);
-  limpiar.addEventListener("click", limpiarTodo);
+  btnProcesar.addEventListener("click", procesarZip);
+  btnLimpiar.addEventListener("click", limpiarTodo);
 
   function seleccionarArchivo(archivo) {
     archivoSeleccionado = archivo;
-    procesar.disabled = !archivo;
+    btnProcesar.disabled = !archivo;
 
-    if (archivo) {
-      estado.textContent =
-        `Archivo seleccionado: ${archivo.name}\n` +
-        `Tamaño: ${formatearBytes(archivo.size)}`;
-    } else {
-      estado.textContent = "Esperando archivo ZIP...";
-    }
+    estado.textContent = archivo
+      ? `Archivo seleccionado: ${archivo.name}\nTamaño: ${formatearBytes(archivo.size)}`
+      : "Esperando archivo ZIP...";
   }
 
   function limpiarTodo() {
     archivoSeleccionado = null;
-    archivoZip.value = "";
+    archivoZipInput.value = "";
     registros = [];
     errores = [];
     hojasVacias = [];
     archivosDanados = [];
     estadisticas = {};
+    inicioProceso = 0;
 
     progreso.value = 0;
     estado.textContent = "Esperando archivo ZIP...";
@@ -260,11 +256,11 @@
 
     mTiempo.textContent = "0 s";
 
-    procesar.disabled = true;
-    descargarJson.disabled = true;
-    descargarExcel.disabled = true;
-    descargarErrores.disabled = true;
-    descargarRegistro.disabled = true;
+    btnProcesar.disabled = true;
+    btnDescargarJson.disabled = true;
+    btnDescargarExcel.disabled = true;
+    btnDescargarErrores.disabled = true;
+    btnDescargarRegistro.disabled = true;
   }
 
   async function procesarZip() {
@@ -280,13 +276,13 @@
     errores = [];
     hojasVacias = [];
     archivosDanados = [];
-    inicio = performance.now();
+    inicioProceso = performance.now();
 
-    procesar.disabled = true;
-    descargarJson.disabled = true;
-    descargarExcel.disabled = true;
-    descargarErrores.disabled = true;
-    descargarRegistro.disabled = true;
+    btnProcesar.disabled = true;
+    btnDescargarJson.disabled = true;
+    btnDescargarExcel.disabled = true;
+    btnDescargarErrores.disabled = true;
+    btnDescargarRegistro.disabled = true;
 
     erroresDiv.innerHTML = "";
     erroresDiv.style.display = "none";
@@ -311,7 +307,7 @@
           !entrada.dir &&
           !entrada.name.startsWith("__MACOSX/") &&
           /\.(xlsx|xls)$/i.test(entrada.name) &&
-          !nombreBase(entrada.name).startsWith("~$")
+          !obtenerNombreArchivo(entrada.name).startsWith("~$")
         )
         .sort((a, b) => a.name.localeCompare(b.name, "es"));
 
@@ -322,17 +318,13 @@
         throw new Error("El ZIP no contiene archivos Excel.");
       }
 
-      let totalHojasConocidas = 0;
+      let hojasTotales = 0;
       let hojasTerminadas = 0;
 
       for (let indiceLibro = 0; indiceLibro < archivosExcel.length; indiceLibro++) {
         const entrada = archivosExcel[indiceLibro];
-        const nombreArchivo = nombreBase(entrada.name);
-        const categoria = categoriaDesdeArchivo(nombreArchivo);
-
-        estado.textContent =
-          `Leyendo libro ${indiceLibro + 1} de ${archivosExcel.length}\n` +
-          `${nombreArchivo}`;
+        const nombreArchivo = obtenerNombreArchivo(entrada.name);
+        const categoria = obtenerCategoria(nombreArchivo);
 
         try {
           const buffer = await entrada.async("arraybuffer");
@@ -342,7 +334,7 @@
             cellDates: false
           });
 
-          totalHojasConocidas += workbook.SheetNames.length;
+          hojasTotales += workbook.SheetNames.length;
 
           for (const nombreHoja of workbook.SheetNames) {
             const departamento = String(nombreHoja || "").trim();
@@ -354,6 +346,7 @@
 
             try {
               const hoja = workbook.Sheets[nombreHoja];
+
               const filas = XLSX.utils.sheet_to_json(hoja, {
                 header: 1,
                 defval: "",
@@ -369,7 +362,7 @@
                 });
 
                 hojasTerminadas++;
-                actualizarProgreso(hojasTerminadas, totalHojasConocidas);
+                actualizarProgreso(hojasTerminadas, hojasTotales);
                 continue;
               }
 
@@ -379,12 +372,11 @@
                 errores.push({
                   Archivo: nombreArchivo,
                   Hoja: departamento,
-                  Motivo:
-                    "No se encontraron Código de producto y Descripción"
+                  Motivo: "No se encontraron Código de producto y Descripción"
                 });
 
                 hojasTerminadas++;
-                actualizarProgreso(hojasTerminadas, totalHojasConocidas);
+                actualizarProgreso(hojasTerminadas, hojasTotales);
                 continue;
               }
 
@@ -406,9 +398,9 @@
 
               hojasTerminadas++;
               actualizarMetricas();
-              actualizarProgreso(hojasTerminadas, totalHojasConocidas);
+              actualizarProgreso(hojasTerminadas, hojasTotales);
 
-              await pausaInterfaz();
+              await cederInterfaz();
             } catch (errorHoja) {
               errores.push({
                 Archivo: nombreArchivo,
@@ -417,7 +409,7 @@
               });
 
               hojasTerminadas++;
-              actualizarProgreso(hojasTerminadas, totalHojasConocidas);
+              actualizarProgreso(hojasTerminadas, hojasTotales);
             }
           }
         } catch (errorLibro) {
@@ -431,12 +423,12 @@
           errores.push(detalle);
         }
 
-        await pausaInterfaz();
+        await cederInterfaz();
       }
 
       progreso.value = 100;
 
-      const tiempo = (performance.now() - inicio) / 1000;
+      const tiempo = (performance.now() - inicioProceso) / 1000;
       mTiempo.textContent = formatearTiempo(tiempo);
 
       estado.textContent =
@@ -449,17 +441,17 @@
       mostrarErrores();
       actualizarMetricas();
 
-      descargarJson.disabled = registros.length === 0;
-      descargarExcel.disabled = registros.length === 0;
-      descargarErrores.disabled =
+      btnDescargarJson.disabled = registros.length === 0;
+      btnDescargarExcel.disabled = registros.length === 0;
+      btnDescargarErrores.disabled =
         errores.length === 0 && hojasVacias.length === 0;
-      descargarRegistro.disabled = false;
+      btnDescargarRegistro.disabled = false;
     } catch (error) {
       console.error(error);
       estado.textContent =
         error.message || "No fue posible procesar el archivo ZIP.";
     } finally {
-      procesar.disabled = false;
+      btnProcesar.disabled = false;
     }
   }
 
@@ -471,7 +463,7 @@
       const columnas = {};
 
       fila.forEach((valor, indice) => {
-        const encabezado = normalizar(valor);
+        const encabezado = normalizarTexto(valor);
 
         if (esCodigoCaja(encabezado)) columnas.codigoCaja = indice;
         if (esCodigoProducto(encabezado)) columnas.codigoProducto = indice;
@@ -483,10 +475,7 @@
         columnas.codigoProducto !== undefined &&
         columnas.descripcion !== undefined
       ) {
-        return {
-          filaIndice: i,
-          columnas
-        };
+        return { filaIndice: i, columnas };
       }
     }
 
@@ -505,19 +494,17 @@
 
       const codigoCaja =
         columnas.codigoCaja !== undefined
-          ? limpiar(fila[columnas.codigoCaja])
+          ? limpiarValor(fila[columnas.codigoCaja])
           : "";
 
-      const clave = limpiar(fila[columnas.codigoProducto]);
-      const descripcion = limpiar(fila[columnas.descripcion]);
+      const clave = limpiarValor(fila[columnas.codigoProducto]);
+      const descripcion = limpiarValor(fila[columnas.descripcion]);
 
       const ubicacion =
         columnas.ubicacion !== undefined
-          ? limpiar(fila[columnas.ubicacion])
+          ? limpiarValor(fila[columnas.ubicacion])
           : "";
 
-      // La fila se conserva aunque Código de caja esté vacío.
-      // Solo se omite si no hay Código de producto ni Descripción.
       if (!clave && !descripcion) {
         filasOmitidas++;
         continue;
@@ -530,8 +517,6 @@
         "Descripción": descripcion,
         "Categoría": categoria,
         "Ubicación": ubicacion,
-
-        // Campos adicionales. No modifican la tabla actual de consulta.
         "Código de caja": codigoCaja,
         "Departamento": departamento
       });
@@ -548,8 +533,6 @@
     return [
       "codigo caja",
       "codigo de caja",
-      "código caja",
-      "código de caja",
       "caja",
       "codigo caja1",
       "codigo de caja1"
@@ -560,44 +543,34 @@
     return [
       "codigo producto",
       "codigo de producto",
-      "código producto",
-      "código de producto",
       "clave",
       "clave producto",
       "clave de producto",
       "sku",
-      "codigo",
-      "código"
+      "codigo"
     ].includes(valor);
   }
 
   function esDescripcion(valor) {
     return [
       "descripcion",
-      "descripción",
       "descripcion producto",
-      "descripción producto",
       "descripcion del producto",
-      "descripción del producto",
       "nombre",
       "producto",
-      "articulo",
-      "artículo"
+      "articulo"
     ].includes(valor);
   }
 
   function esUbicacion(valor) {
     return [
       "ubicacion",
-      "ubicación",
       "ubicacion producto",
-      "ubicación producto",
-      "localizacion",
-      "localización"
+      "localizacion"
     ].includes(valor);
   }
 
-  function normalizar(valor) {
+  function normalizarTexto(valor) {
     return String(valor ?? "")
       .toLowerCase()
       .normalize("NFD")
@@ -607,18 +580,18 @@
       .trim();
   }
 
-  function limpiar(valor) {
+  function limpiarValor(valor) {
     return String(valor ?? "").trim();
   }
 
-  function nombreBase(ruta) {
+  function obtenerNombreArchivo(ruta) {
     return String(ruta)
       .split("/")
       .filter(Boolean)
       .pop() || "";
   }
 
-  function categoriaDesdeArchivo(nombreArchivo) {
+  function obtenerCategoria(nombreArchivo) {
     return nombreArchivo
       .replace(/\.(xlsx|xls)$/i, "")
       .replace(/[._-]+/g, " ")
@@ -631,13 +604,14 @@
       !filas.length ||
       filas.every(fila =>
         !Array.isArray(fila) ||
-        fila.every(valor => limpiar(valor) === "")
+        fila.every(valor => limpiarValor(valor) === "")
       )
     );
   }
 
   function actualizarProgreso(procesadas, total) {
     if (!total) return;
+
     progreso.value = Math.min(
       99,
       Math.round((procesadas / total) * 100)
@@ -653,9 +627,9 @@
     mErrores.textContent =
       (errores.length + hojasVacias.length).toLocaleString("es-MX");
 
-    if (inicio) {
+    if (inicioProceso) {
       mTiempo.textContent =
-        formatearTiempo((performance.now() - inicio) / 1000);
+        formatearTiempo((performance.now() - inicioProceso) / 1000);
     }
   }
 
@@ -719,7 +693,7 @@
     });
   }
 
-  descargarJson.addEventListener("click", () => {
+  btnDescargarJson.addEventListener("click", () => {
     descargarTexto(
       "inventario.json",
       JSON.stringify(registros, null, 2),
@@ -727,7 +701,7 @@
     );
   });
 
-  descargarExcel.addEventListener("click", () => {
+  btnDescargarExcel.addEventListener("click", () => {
     const hojaInventario = XLSX.utils.json_to_sheet(registros);
 
     hojaInventario["!cols"] = [
@@ -770,7 +744,7 @@
     XLSX.writeFile(libro, "Inventario_Consolidado.xlsx");
   });
 
-  descargarErrores.addEventListener("click", () => {
+  btnDescargarErrores.addEventListener("click", () => {
     const reporte = [
       ...errores.map(item => ({
         Tipo: "Error de estructura o lectura",
@@ -799,7 +773,7 @@
     XLSX.writeFile(libro, "Reporte_Errores.xlsx");
   });
 
-  descargarRegistro.addEventListener("click", () => {
+  btnDescargarRegistro.addEventListener("click", () => {
     const ahora = new Date();
 
     const hoja = XLSX.utils.aoa_to_sheet([
@@ -858,7 +832,7 @@
     return `${(bytes / Math.pow(1024, indice)).toFixed(2)} ${unidades[indice]}`;
   }
 
-  function pausaInterfaz() {
+  function cederInterfaz() {
     return new Promise(resolve => setTimeout(resolve, 0));
   }
 </script>
